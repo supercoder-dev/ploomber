@@ -243,6 +243,14 @@ class DAGSpec(MutableMapping):
         data_argument_is_filepath = isinstance(data, (str, Path))
 
         # initialized with a path to a yaml file...
+        # Check for Link tasks and handle them
+        if "tasks" in data:
+            for task in data["tasks"]:
+                if task.get("class") == "Link":
+                    # Initialize Link task
+                    task["source"] = task.get("source", None)
+                    task["product"] = task.get("product", None)
+                    task["upstream"] = task.get("upstream", [])
         if data_argument_is_filepath:
             # TODO: test this
             if parent_path is not None:
@@ -855,6 +863,15 @@ def process_tasks(dag, dag_spec, root_path=None):
 
     # first pass: init tasks and them to dag
     for task_dict in dag_spec["tasks"]:
+            if task_dict["class"] == "Link":
+                # Handle Link task
+                task = Link(
+                    task_dict["source"],
+                    task_dict["product"],
+                    upstream=task_dict["upstream"],
+                )
+                dag.add(task)
+                continue
         # init source to extract product
         fn = task_dict["class"]._init_source
         kwargs = {
